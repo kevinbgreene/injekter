@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	
+	<meta charset="UTF-8">
+	<title>Injeckter Example</title>
+
+</head>
+
+<body>
+
+	<!-- load dependencies -->
+	<script src="bower_components/jquery/jquery.js"></script>
+
+	<!-- include injekter -->
+	<script src="injekter.js"></script>
+
+	<script>
+
+		// usage
+		injekter.define('mymodule', function() {
+
+			return function(msg) {
+				alert(msg);
+			};
+
+		});
+
+		injekter.define('anothermodule', ['mymodule', function(mymodule) {
+
+			mymodule('hi there!');
+
+		}]);
+
+	</script>
+	
+</body>
+
+</html>
