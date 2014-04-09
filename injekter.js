@@ -50,8 +50,8 @@
 
     function size(obj, ownPropsOnly) {
 
-        var count = 0,
-            key;
+        var count = 0;
+        var key;
 
         if (isArray(obj) || isString(obj)) {
             return obj.length;
@@ -96,6 +96,9 @@
 		*/
 		function inject(arr, fn) {
 
+			console.log('inject: ' + isReady);
+			console.log('fn: ', fn);
+
 			var mod;
 
 			if (isString(arr)) {
@@ -120,7 +123,7 @@
 		/*
 		* Takes an array of dependencies and injects them into a function
 		*
-		* @method runQueue
+		* @method _runQueue
 		* @param {Array} arr - array of dependencies
 		* @param {Function} [fn] - invocation function
 		*/
@@ -268,9 +271,7 @@
 		* @method override
 		*/
 		function override() {
-
-			var key = null;
-
+			
 			prepServies();
 
 			isReady = true;
@@ -284,12 +285,9 @@
 				return;
 			}
 
-			var key = null;
-
 			prepServies();
 
 			clearRunQueue();
-
 			clearInjectorQueue();
 
 			isReady = true;
@@ -309,6 +307,22 @@
 	function Injekter() {
 
 		var injector = Injector();
+
+		injector.define('injekter.config', function() {
+
+			var store = {};
+
+			return {
+				
+				get : function(key) {
+					return store[key] || null;
+				},
+
+				set : function(key, value) {
+					store[key] = value;
+				}
+			};
+		});
 
 		injector.define('injekter.inject', function() {
 			injector.inject

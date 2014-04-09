@@ -1,5 +1,7 @@
 # Injekter
 
+version: 0.0.1
+
 A very simple dependency injector. Just me playing around with dependency injection. May become more later.
 
 ## Usage
