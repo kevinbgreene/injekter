@@ -1,6 +1,6 @@
 /**
 * A global dependency injector. 'injekter' is defined on the
-* global name space with the methods 'define' and 'inject'.
+* global namespace with the methods 'define', 'inject' and 'run'.
 *
 * @module Injekter
 */
@@ -95,9 +95,6 @@
 		* @param {Function} [fn] - invocation function
 		*/
 		function inject(arr, fn) {
-
-			console.log('inject: ' + isReady);
-			console.log('fn: ', fn);
 
 			var mod;
 
@@ -308,9 +305,17 @@
 
 		var injector = Injector();
 
-		injector.define('injekter.config', function() {
+		var store = {};
 
-			var store = {};
+		function config(key, value) {
+
+			if (key && typeof value !== 'undefined') {
+
+				store[key] = value;
+			}
+		}
+
+		injector.define('injekter.config', function() {
 
 			return {
 				
@@ -357,7 +362,8 @@
 			define : injector.define,
 			inject : injector.inject,
 			run : injector.run,
-			override : injector.override
+			override : injector.override,
+			config : config
 		}
 	}
 
