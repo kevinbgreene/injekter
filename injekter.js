@@ -4,6 +4,8 @@
 *
 * @module Injekter
 * @version 0.1.0
+* @license MIT
+* @author Kevin B. Greene <hightimesteddy@gmail.com>
 */
 (function(global, document) {
 
