@@ -20,7 +20,7 @@
 
 			return function(str) {
 
-				alert('hi ' + str + '!');
+				alert('Hi ' + str + '!');
 			}
 		})
 
@@ -42,8 +42,13 @@
 			}
 		}]);
 
+		// define a module
 		injekter.module('anothermodule')
+
+		// include dependencies
 		.needs('testMod')
+
+		// use run to start application
 		.run(['niceAlert', function(niceAlert) {
 
 			niceAlert('Kevin');
