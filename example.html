@@ -10,28 +10,46 @@
 
 <body>
 
-	<!-- load dependencies -->
-	<script src="bower_components/jquery/jquery.js"></script>
-
 	<!-- include injekter -->
 	<script src="injekter.js"></script>
 
 	<script>
 
-		// usage
-		injekter.define('mymodule', function() {
+		// defines a service on the global module.
+		injekter.define('myAlert', function() {
 
-			return function(msg) {
-				alert(msg);
-			};
+			return function(str) {
 
-		});
+				alert('hi ' + str + '!');
+			}
+		})
 
-		injekter.define('anothermodule', ['mymodule', function(mymodule) {
+		// defines a module
+		injekter.module('testMod')
+		
+		// services available on the global module are available in all modules.
+		.run(['myAlert', function(myAlert) {
 
-			mymodule('hi there!');
+			myAlert('Kevin');
+		}])
 
+		// services defined on a module are only available in that module or in 
+		// modules that include that module;
+		.define('niceAlert', ['myAlert', function(myAlert) {
+
+			return function(str) {
+				myAlert(str + ', looking good!');
+			}
 		}]);
+
+		injekter.module('anothermodule')
+		.needs('testMod')
+		.run(['niceAlert', function(niceAlert) {
+
+			niceAlert('Kevin');
+		}]);
+
+
 
 	</script>
 	

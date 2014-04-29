@@ -3,14 +3,91 @@
 * global namespace with the methods 'define', 'inject' and 'run'.
 *
 * @module Injekter
+* @version 0.1.0
 */
-
-/**
-* TODO: add automatic namespacing
-*/
-(function(global, $) {
+(function(global, document) {
 
 	'use strict';
+
+	var toString = Object.prototype.toString;
+	var slice = [].slice;
+	var push = [].push;
+
+	/*!
+	 * contentloaded.js
+	 *
+	 * Author: Diego Perini (diego.perini at gmail.com)
+	 * Summary: cross-browser wrapper for DOMContentLoaded
+	 * Updated: 20101020
+	 * License: MIT
+	 * Version: 1.2
+	 *
+	 * URL:
+	 * http://javascript.nwbox.com/ContentLoaded/
+	 * http://javascript.nwbox.com/ContentLoaded/MIT-LICENSE
+	 *
+	 */
+
+	// @win window reference
+	// @fn function reference
+	function contentLoaded(win, fn) {
+
+		var done = false;
+		var top = true;
+
+		var doc = win.document;
+		var root = doc.documentElement;
+
+		var add = doc.addEventListener ? 'addEventListener' : 'attachEvent';
+		var rem = doc.addEventListener ? 'removeEventListener' : 'detachEvent';
+		var pre = doc.addEventListener ? '' : 'on';
+
+		var init = function(e) {
+			if (e.type == 'readystatechange' && doc.readyState != 'complete') return;
+			(e.type == 'load' ? win : doc)[rem](pre + e.type, init, false);
+			if (!done && (done = true)) fn.call(win, e.type || e);
+		};
+
+		var poll = function() {
+			try { root.doScroll('left'); } catch(e) { setTimeout(poll, 50); return; }
+			init('poll');
+		};
+
+		if (doc.readyState == 'complete') {
+			fn.call(win, 'lazy');
+		}
+		else {
+			if (doc.createEventObject && root.doScroll) {
+				try { top = !win.frameElement; } catch(e) { }
+				if (top) poll();
+			}
+			doc[add](pre + 'DOMContentLoaded', init, false);
+			doc[add](pre + 'readystatechange', init, false);
+			win[add](pre + 'load', init, false);
+		}
+
+	}
+
+	// cross browser logging. stoopid IE.
+	var logger = (function() {
+
+		return {
+
+			log : function(str, obj) {
+
+				if (isDefined(console)) {
+
+					if (isDefined(obj)) {
+						console.log(str, obj);
+					}
+					else {
+						console.log(str);
+					}
+				}
+			}
+		}
+
+	}());
 
     function isUndefined(value) {
         return typeof value == 'undefined';
@@ -69,6 +146,22 @@
         }
     }
 
+    function forEach(arr, fn) {
+
+    	var i = 0;
+    	var len = arr.length;
+    	var r;
+
+    	for (i=0;i<len;i++) {
+
+    		r = fn(arr[i], i);
+
+    		if (r === false) {
+    			return
+    		}
+    	}
+    }
+
     function toDash(str) {
 
 		return str.replace(/([A-Z])/g, function($1) {
@@ -76,249 +169,374 @@
 		});
 	}
 
-	function Injector() {
-
-		/*
-		* Just a hash to store our modules
-		*/
-		var modules = {};
-		var injectorQueue = [];
-		var runQueue = [];
-
-		var isReady = false;
-
-		/*
-		* Takes an array of dependencies and injects them into a function
-		*
-		* @method inject	
-		* @param {Array} arr - array of dependencies
-		* @param {Function} [fn] - invocation function
-		*/
-		function inject(arr, fn) {
-
-			var mod;
-
-			if (isString(arr)) {
-				arr = [arr];
-			}
-
-			mod = {
-				deps : arr,
-				fn : fn
-			};
-
-			if (!isReady) {
-				injectorQueue.push(mod);
-			}
-			else {
-				return getDependencies(mod);
-			}
-
-			return null;
-		}
-
-		/*
-		* Takes an array of dependencies and injects them into a function
-		*
-		* @method _runQueue
-		* @param {Array} arr - array of dependencies
-		* @param {Function} [fn] - invocation function
-		*/
-		function _runQueue(arr, fn) {
-			
-			if (isReady) {
-				throw new Error('Items can only be added to the run queue before run is called');
-			}
-			else {
-				runQueue.push({
-					deps : arr,
-					fn : fn
-				});
-			}
-		}
-
-		/*
-		* Registers a module.
-		*
-		* @method define
-		* @param {String} name - a name for the module
-		* @param {Array|Function} arr - an array of dependencies and the 
-		* invocation funciton or just the invocation function.
-		*/
-		function define(name, arr) {
-
-			if (isUndefined(arr)) {
-				return modules[name] || null;
-			}
-			else if (modules[name]) {
-				throw new Error('A service with name ' + name + ' already exists');
-			}
-			else {
-				modules[name] = process(arr);
-			}
-
-			return this;
-		}
-
-		/*
-		* Processes the dependencies of a module in preparation to resolve those dependencies.
-		*
-		* @method process
-		* @param {array | function} arr - an array of dependencies and the 
-		* invocation funciton or just the invocation function.
-		*/
-		function process(arr) {
-
-			var fn = null;
-			var deps = [];
-
-			if (isArray(arr)) {
-
-				arr.forEach(function(el) {
-
-					if (isFunction(el)) {
-						fn = el;
-					}
-					else {
-						deps.push(el);
-					}
-				});
-			}
-			else if (isDefined(arr)) {
-				fn = arr;
-			}
-
-			return {
-				fn : fn,
-				deps : deps,
-				configured : false
-			};
-		}
-
-		function resolve(container, str) {
-
-			var temp = container[str];
-
-			if (temp && !temp.configured) {
-
-				container[str].fn = getDependencies(temp, str);
-
-				return container[str].fn;
-			}
-			else if (temp && temp.fn) {
-				return temp.fn;
-			}
-		}
-
-		function getDependencies(mod) {
-
-			var deps = [];
-			var fn = mod.fn;
-			var i = 0;
-			var temp = null;
-
-			for (i=0;i<mod.deps.length;i++) {
-
-				temp = mod.deps[i];
-
-				if (isString(temp)) {
-
-					deps.push(resolve(modules, temp));
-				}
-				else if (isFunction(temp)) {
-					fn = temp;
-				}
-			}
-
-			if (fn) {
-				mod.configured = true;
-				return fn.apply(window, deps);
-			}
-
-			return null;
-		}
-
-		function prepServies() {
-
-			var key = null;
-
-			for (key in modules) {
-				resolve(modules, key);
-			}
-		}
-
-		function clearRunQueue() {
-
-			runQueue.forEach(function(mod) {
-				getDependencies(mod);
-			});
-		}
-
-		function clearInjectorQueue() {
-
-			injectorQueue.forEach(function(mod) {
-				getDependencies(mod);
-			});
-		}
-
-		/*
-		* Overrides the default run loop
-		* Builds modules without performing app config.
-		*
-		* @method override
-		*/
-		function override() {
-			
-			prepServies();
-
-			isReady = true;
-			injectorQueue = [];
-			runQueue = [];
-		}
-
-		function run() {
-
-			if (isReady) {
-				return;
-			}
-
-			prepServies();
-
-			clearRunQueue();
-			clearInjectorQueue();
-
-			isReady = true;
-			injectorQueue = [];
-			runQueue = [];
-		}
-
-		return {
-			define : define,
-			inject : inject,
-			run : _runQueue,
-			override : override,
-			start : run
-		};
-	}
-
 	function Injekter() {
 
-		var injector = Injector();
+		// collection of all modules for this Injekter instance.
+		var modules = {};
 
-		var store = {};
+		function Module(name) {
 
-		function config(key, value) {
+			// instance is the external interface that is returned to the user.
+			var instance = null;
+			
+			// services is the collection of services defined in this module.
+			var services = {};
+			
+			// serviceCache is a local reference to external services once they have
+			// been resolved.
+			var serviceCache = {};
 
-			if (key && typeof value !== 'undefined') {
+			// includes are the names of other modules this module depends on.
+			var includes = [];
 
-				store[key] = value;
+			// an array of functions to run once this module is ready.
+			var runQueue = [];
+
+			// Boolean flag flipped once all the dependencies have been resolved and
+			// the runQueue has been cleared.
+			var isReady = false;
+
+			/**
+			 * A constructor for module services. The only reason we have this as a 
+			 * constructor is so that we can test against instanceof when resolving
+			 * services.
+			 * 
+			 * @constructor
+			 * @name Service
+			 * @param {Object} options
+			 */
+			function Service(options) {
+				this.config = options.config;
+				this.deps = options.deps;
 			}
+
+			/*
+			 * Takes an array of dependencies and injects them into a function
+			 *
+		     * @method
+		     * @name addToRunQueue
+		     * @param {Array} arr - array of dependencies
+		     * @param {Function} [fn] - invocation function
+		     */
+			function addToRunQueue(arr) {
+				
+				if (isReady) {
+					throw new Error('Items can only be added to the run queue before run is called');
+				}
+				else {
+					runQueue.push(process(arr));
+				}
+
+				return instance;
+			}
+
+			/**
+			 * Adds the name of a module to list of includes for this module.
+			 *
+			 * @function
+			 * @name addInclude
+			 * @param {String|Array} name - The name of a module to include. Can also be
+			 * an array of names to include.
+			 */
+			function addInclude(name) {
+
+				var shouldAdd = true;
+
+				// check to see if this module has already been included.
+				forEach(includes, function(item) {
+
+					if (item === name) {
+						shouldAdd = false;
+						return false;
+					}
+				});
+
+				if (shouldAdd) {
+					includes.push(name);
+				}
+			}
+
+			/**
+			 * Define a service for this module.
+			 *
+			 * @method
+			 * @name define
+			 * @param {String} name
+			 * @param {Array} arr
+			 */
+			function define(name, arr) {
+
+				if (!services[name]) {
+					services[name] = process(arr);
+				}
+
+				return instance;
+			}
+
+			/**
+			 * Process the arguments passes in to define a service and
+			 * normalize them into a service object.
+			 *
+			 * @function
+			 * @name process
+			 * @param {Array|Function} arr - An array containing the names of dependencies
+			 * for this service and a function used to configure this servie, or just a
+			 * function used to configure this service. If the config function is missing
+			 * the function will throw.
+			 */
+			function process(arr) {
+
+				var fn = null;
+				var deps = [];
+
+				if (isArray(arr)) {
+
+					arr.forEach(function(el) {
+
+						if (isFunction(el)) {
+							fn = el;
+						}
+						else {
+							deps.push(el);
+						}
+					});
+				}
+				else if (isFunction(arr)) {
+					fn = arr;
+				}
+				else {
+					throw new Error('Service must have a config function');
+				}
+
+				return new Service({
+					config : fn,
+					deps : deps
+				});
+			}
+
+			/**
+			 * Receives the name of a service and tries to find that service, either locally
+			 * or in one of the included modules. If the parameter passed in is not a string
+			 * it is assumed to be the service itself and is returned.
+			 *
+			 * @function
+			 * @name getService
+			 * @param {String} name - Name of the service to find.
+			 */
+			function getService(name, local) {
+
+				var i = 0;
+				var len = includes.length;
+				var tempMod = null;
+
+				// if we already have a service, return it.
+				if (name instanceof Service) {
+					return name;
+				}
+
+				// if the name is a string we need to find the service by name.
+				if (isString(name)) {
+
+					// if a service by this name is local, easy enough, just return that.
+					if (services[name]) {
+						return services[name];
+					}
+
+					// if we've already resolved this service a reference is in cache.
+					else if (serviceCache[name] && !local) {
+						return serviceCache[name];
+					}
+					
+					// if it's not local and not in the cache, we need to find it 
+					// in the includes.
+					else if (!local) {
+
+						for (i=0;i<len;i++) {
+
+							tempMod = modules[includes[i]] || null;
+
+							if (tempMod && tempMod.get(name)) {
+								serviceCache[name] = tempMod.get(name);
+								return serviceCache[name];
+							}
+						}
+
+						// if it's not in the includes return null.
+						return null;
+					}
+				}
+
+				return null;
+			}
+
+			/**
+			 * Resolves the dependencies for a service
+			 *
+			 * @function
+			 * @name resolve
+			 * @param {String|Object} serviceToResolve - This is either the string name of
+			 * a service to resolve or an actual Service instance.
+			 * @param {Boolean} [local] - Optional boolean flag determines if we only look
+			 * for a service in this module or all of the services included with included
+			 * modules.
+			 */
+			function resolve(serviceToResolve, local) {
+
+				// this function can receive several types of arguments as the 
+				// serviceToResolve, we need to normalize this argument before moving on.
+				var service = getService(serviceToResolve, local);
+
+				// if the service is a function, we're good to go, return it.
+				if (isFunction(service)) {
+					return service;
+				}
+
+				// if the service has been resolved already it will have an fn property.
+				// return the funtion contained there.
+				else if (service && service.fn) {
+					return service.fn;
+				}
+
+				// if the service is an instance of service but doesn't have fn defined,
+				// it hasn't been resolved yet. get the dependencies for this services
+				// and then return the service function.
+				else if (service instanceof Service) {
+					service.fn = getDependencies(service);
+					return service.fn;
+				}
+			}
+
+			function getDependencies(service) {
+
+				var resolvedDeps = [];
+				var fn = service.config;
+				
+				forEach(service.deps, function(dep) {
+
+					// if the dependency is a string it hasn't been resolved yet.
+					// resolve it and push it to resolved array
+					if (isString(dep)) {
+						resolvedDeps.push(resolve(dep));
+					}
+					// otherwise, if the dependency is a function, it has been resolved.
+					else if (isFunction(dep)) {
+						fn = dep;
+					}
+				});
+
+				if (fn) {
+					service.config = null;
+
+					try {
+						return fn.apply(null, resolvedDeps);
+					}
+					catch(err) {
+						logger.log('ERROR: Unable to get dependency: ' + err);
+						return null;
+					}
+				}
+
+				return null;
+			}
+
+			/**
+			 * Include a module as a dependency for this module.
+			 *
+			 * @method
+			 * @name needs
+			 * @param {String|Array} name - Name (or array of names) of a module that
+			 * this module depends on.
+			 */
+			function needs(name) {
+
+				if (isArray(name)) {
+
+					forEach(name, function(item) {
+
+						addInclude(item);
+					});
+				}
+				else {
+					addInclude(name);
+				}
+
+				return instance;
+			}
+
+			/**
+			 * Return a resolved service from this modules set of services.
+			 *
+			 * @method
+			 * @name get
+			 * @param {String} name - Name of the service to return.
+			 */
+			function get(name) {
+				return resolve(name, true);
+			}
+
+			/**
+			 * List the names of the modules this module depends on.
+			 *
+			 * @method
+			 * @name list
+			 */
+			function list() {
+
+				forEach(includes, function(item) {
+					logger.log(item);
+				});
+
+				return instance;
+			}
+
+			function clearRunQueue() {
+
+				forEach(runQueue, function(mod) {
+					getDependencies(mod);
+				});
+
+				runQueue = null;
+			}
+
+			/**
+			 * Resolve all the services and their dependenies and call all the functions
+			 * in the runQueu.
+			 *
+			 * @method
+			 * @name start
+			 */
+			function start() {
+
+				var key;
+
+				for (key in services) {
+					resolve(key);
+				}
+
+				clearRunQueue();
+			}
+
+			// public interface exposed to users.
+			instance = {
+				name : name,
+				define : define,
+				needs : needs,
+				get : get,
+				list : list,
+				run : addToRunQueue,
+				start : start
+			};
+
+			return instance;
 		}
 
-		injector.define('injekter.config', function() {
+		var config = (function() {
+
+			// a collection of global config values.
+			var store = {};
 
 			return {
-				
+
 				get : function(key) {
 					return store[key] || null;
 				},
@@ -327,13 +545,18 @@
 					store[key] = value;
 				}
 			};
-		});
 
-		injector.define('injekter.inject', function() {
-			injector.inject
-		});
+		}());
 
-		injector.define('injekter.utils', function() {
+		// default module for global defines.
+		// All other modules have access to this module.
+		modules['global'] = Module('global');
+
+		// let's populate the global module with some useful stuff.
+		modules['global']
+
+		// collection of utilities. mostly for checking the type of a value.
+		.define('injekter.utils', function() {
 
 			var utility = {};
 
@@ -348,27 +571,82 @@
 		    utility.isFunction = isFunction;
 		    utility.isBoolean = isBoolean;
 		    utility.toDash = toDash;
+		    utility.forEach = forEach;
 
 			return utility;
+		})
+
+		// expose the cross browser logger to all modules.
+		.define('logger', function() {
+			return logger;
+		})
+
+		// global config hash.
+		.define('config', function() {
+			return config;
 		});
 
-		/*
-		* Ladies and Gentlemen,
-		* Start your engines.
-		*/
-		$(injector.start);
+		// gets a module with the given name.
+		// if the module doesn't exist, one is created.
+		function getModule(name) {
+
+			// if the module doesn't exist, create one.
+			if (!modules[name]) {
+
+				modules[name] = Module(name);
+
+				// all modules, except the global module, include the global module.
+				// having a module depend on itself causes a circular dependency and 
+				// nasty errors insue.
+				// TODO: check for circular dependencies.
+				modules[name].needs('global');
+			}
+
+			return modules[name];
+		}
+
+		/**
+		 * Defines a service on the global module that is shared by all other modules.
+		 *
+		 * @method
+		 * @name globalDefine
+		 * @param {String} name - A name for the module
+		 * @param {Array|Function} arr - A function used to configure the module for this
+		 * name, or an array of dependencies (by name) and a config function. If an array,
+		 * the config function must be the last item in the array.
+		 */
+		function globalDefine(name, arr) {
+
+			modules['global'].define(name, arr);
+		}
+
+		/**
+		 * Called once the DOM is ready. Tells each module to resolve it's dependencies,
+		 * and clear their run queues.
+		 *
+		 * @function
+		 * @name start
+		 */
+		function start() {
+
+			var key;
+
+			for (key in modules) {
+				modules[key].start();
+			}
+		}
+
+		// Ladies and Gentlemen,
+		// Start your engines.
+		contentLoaded(window, start);
 
 		return {
-			define : injector.define,
-			inject : injector.inject,
-			run : injector.run,
-			override : injector.override,
+			module : getModule,
+			define : globalDefine,
 			config : config
-		}
+		};
 	}
 
-	if (typeof global.injekter === 'undefined') {
-		global.injekter = Injekter();
-	}
+	global.injekter = Injekter();
 
-}(window, window.jQuery));
+}(window, window.document));

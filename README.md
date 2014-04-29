@@ -1,27 +1,39 @@
 # Injekter
 
-version: 0.0.1
+version: 0.1.0
 
 A very simple dependency injector. Just me playing around with dependency injection. May become more later.
 
+### Release notes
+
+Removed the jQuery dependency. Now using contentloaded.js by Diego Perini for managing cross-browser DOMContentLoaded. 
+
+Added module privacy. You can define a module and define services only visible to that module. You can also define dependencies. When a module depends on another module it has access to services from both modules. Services are not added to a global store.
+
 ## Usage
 
-Injekter exposes one global variable, "injekter", and has one dependency, jQuery.
+Injekter exposes one global variable, "injekter".
 
-Most of the functionality is housed in two methods, 'define' and 'inject'.
+To define a module:
 
-Register a module.
+     injekter.module('mymodule');
+
+To define module dependencies:
+
+     injekter.module('anothermodule').needs('mymodule');
+
+Can also pass an array to the needs method:
+
+     injekter.module('thirdmodule').needs(['mymodule', 'anothermodule']);
+
+Register a global service. Global services are visible accross all modules.
 
      injekter.define(name, [dep, dep, fn]);
 
-Inject dependencies into a funciton without creating a new module.
+Register a service on a module:
 
-     injekter.inject([dep], fn]);
+     injekter.module(name).define(name, [dep, dep, fn]);
 
-A helper method exists for application bootstraping, 'run'. All of the dependencies are resolved on jQuery.ready. Functions passed to run are executed immediately after all dependencies have been resolved. You can also inject dependencies into your run function. More than one run function can be defined. All will be run.
+A helper method exists for application bootstraping, 'run'. All of the dependencies are resolved on DOMContentLoaded. Functions passed to run are executed immediately after all dependencies have been resolved. You can also inject dependencies into your run function. More than one run function can be defined. All will be executed.
 
-     injekter.run([dep, dep], fn);
-
-or
-
-     injekter.run([dep, dep, fn]);
+     injekter.module(name).run([dep, dep, fn]);

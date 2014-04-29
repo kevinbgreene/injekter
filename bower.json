@@ -1,7 +1,7 @@
 {
   "name": "injekter",
   "main": "injekter.js",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "homepage": "https://github.com/kevinbgreene/injekter",
   "authors": [
     "Kevin Greene <hightimesteddy@gmail.com>"
@@ -17,8 +17,5 @@
     "dev/js/vendor/",
     "test",
     "tests"
-  ],
-  "dependencies": {
-    "jquery": "1.10"
-  }
+  ]
 }
