@@ -27,9 +27,6 @@
 	 * http://javascript.nwbox.com/ContentLoaded/MIT-LICENSE
 	 *
 	 */
-
-	// @win window reference
-	// @fn function reference
 	function contentLoaded(win, fn) {
 
 		var done = false;
@@ -192,6 +189,9 @@
 			// an array of functions to run once this module is ready.
 			var runQueue = [];
 
+			// an array of functions to run once this module is ready.
+			var injectorQueue = [];
+
 			// Boolean flag flipped once all the dependencies have been resolved and
 			// the runQueue has been cleared.
 			var isReady = false;
@@ -213,10 +213,29 @@
 			/*
 			 * Takes an array of dependencies and injects them into a function
 			 *
+			 * @method inject	
+			 * @param {Array} arr - array of dependencies and a function to call
+			 * with those dependencies. The function must be the last item in the
+			 * array.
+			 */
+			function inject(arr) {
+
+				if (!isReady) {
+					injectorQueue.push(process(arr));
+				}
+				else {
+					return getDependencies(mod);
+				}
+
+				return null;
+			}
+
+			/*
+			 * Takes an array of dependencies and injects them into a function
+			 *
 		     * @method
 		     * @name addToRunQueue
 		     * @param {Array} arr - array of dependencies
-		     * @param {Function} [fn] - invocation function
 		     */
 			function addToRunQueue(arr) {
 				
@@ -489,13 +508,18 @@
 				return instance;
 			}
 
-			function clearRunQueue() {
+			function clearQueues() {
 
 				forEach(runQueue, function(mod) {
 					getDependencies(mod);
 				});
 
+				forEach(injectorQueue, function(mod) {
+					getDependencies(mod);
+				});
+
 				runQueue = null;
+				injectorQueue = null;
 			}
 
 			/**
@@ -513,7 +537,9 @@
 					resolve(key);
 				}
 
-				clearRunQueue();
+				clearQueues();
+
+				isReady = true;
 			}
 
 			// public interface exposed to users.
@@ -524,6 +550,7 @@
 				get : get,
 				list : list,
 				run : addToRunQueue,
+				inject : inject,
 				start : start
 			};
 
@@ -586,8 +613,14 @@
 			return config;
 		});
 
-		// gets a module with the given name.
-		// if the module doesn't exist, one is created.
+		/**
+		 * Gets the module with the given name. If the module doesn't exist, one
+		 * is created and the new module is returned.
+		 *
+		 * @method
+		 * @name getModule
+		 * @param {String} name - The name of the module to return.
+		 */
 		function getModule(name) {
 
 			// if the module doesn't exist, create one.
