@@ -1,6 +1,6 @@
 /**
 * A global dependency injector. 'injekter' is defined on the
-* global namespace with the methods 'define', 'inject' and 'run'.
+* global namespace with the methods 'module', 'define', 'inject' 'config' and 'run'.
 *
 * @module Injekter
 * @version 0.1.0
@@ -40,13 +40,28 @@
 		var pre = doc.addEventListener ? '' : 'on';
 
 		var init = function(e) {
-			if (e.type == 'readystatechange' && doc.readyState != 'complete') return;
+
+			if (e.type == 'readystatechange' && doc.readyState != 'complete') {
+				return;
+			}
+			
 			(e.type == 'load' ? win : doc)[rem](pre + e.type, init, false);
-			if (!done && (done = true)) fn.call(win, e.type || e);
+			
+			if (!done && (done = true)) {
+				fn.call(win, e.type || e);
+			}
 		};
 
 		var poll = function() {
-			try { root.doScroll('left'); } catch(e) { setTimeout(poll, 50); return; }
+			
+			try {
+				root.doScroll('left');
+			}
+			catch(e) {
+				setTimeout(poll, 50);
+				return;
+			}
+			
 			init('poll');
 		};
 
@@ -54,9 +69,16 @@
 			fn.call(win, 'lazy');
 		}
 		else {
+
 			if (doc.createEventObject && root.doScroll) {
-				try { top = !win.frameElement; } catch(e) { }
-				if (top) poll();
+				
+				try {
+					top = !win.frameElement;
+				} catch(e) { }
+				
+				if (top) {
+					poll();
+				}
 			}
 			doc[add](pre + 'DOMContentLoaded', init, false);
 			doc[add](pre + 'readystatechange', init, false);
@@ -444,6 +466,7 @@
 				});
 
 				if (fn) {
+
 					service.config = null;
 
 					try {
@@ -524,7 +547,7 @@
 
 			/**
 			 * Resolve all the services and their dependenies and call all the functions
-			 * in the runQueu.
+			 * in the runQueue.
 			 *
 			 * @method
 			 * @name start
@@ -639,21 +662,6 @@
 		}
 
 		/**
-		 * Defines a service on the global module that is shared by all other modules.
-		 *
-		 * @method
-		 * @name globalDefine
-		 * @param {String} name - A name for the module
-		 * @param {Array|Function} arr - A function used to configure the module for this
-		 * name, or an array of dependencies (by name) and a config function. If an array,
-		 * the config function must be the last item in the array.
-		 */
-		function globalDefine(name, arr) {
-
-			modules['global'].define(name, arr);
-		}
-
-		/**
 		 * Called once the DOM is ready. Tells each module to resolve it's dependencies,
 		 * and clear their run queues.
 		 *
@@ -671,12 +679,18 @@
 
 		// Ladies and Gentlemen,
 		// Start your engines.
-		contentLoaded(window, start);
+		contentLoaded(global, start);
 
+		// the public interface for injekter.
 		return {
+
 			module : getModule,
-			define : globalDefine,
-			config : config
+			config : config,
+
+			// methods exposing the global module.
+			define : modules['global'].define,
+			inject : modules['global'].inject,
+			run : modules['global'].run
 		};
 	}
 

@@ -24,6 +24,11 @@
 			}
 		})
 
+		injekter.inject(['myAlert', function(myAlert) {
+
+			myAlert('Sandy');
+		}]);
+
 		// defines a module
 		injekter.module('testMod')
 		
