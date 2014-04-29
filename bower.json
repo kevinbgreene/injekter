@@ -1,21 +1,21 @@
 {
-  "name": "injekter",
-  "main": "injekter.js",
-  "version": "0.1.0",
-  "homepage": "https://github.com/kevinbgreene/injekter",
-  "authors": [
-    "Kevin Greene <hightimesteddy@gmail.com>"
-  ],
-  "moduleType": [
-    "globals"
-  ],
-  "license": "MIT",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "dev/js/vendor/",
-    "test",
-    "tests"
-  ]
+  	"name": "injekter",
+  	"main": "injekter.js",
+  	"version": "0.1.0",
+  	"homepage": "https://github.com/kevinbgreene/injekter",
+  	"authors": [
+    	"Kevin Greene <hightimesteddy@gmail.com>"
+  	],
+  	"moduleType": [
+    	"globals"
+  	],
+  	"license": "MIT",
+  	"ignore": [
+    	"**/.*",
+    	"node_modules",
+    	"bower_components",
+    	"dev/js/vendor/",
+    	"test",
+    	"tests"
+  	]
 }
