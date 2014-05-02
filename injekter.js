@@ -195,7 +195,7 @@
 		// collection of all modules for this Injekter instance.
 		var modules = {};
 
-		function Module(name) {
+		function Module(moduleName) {
 
 			// instance is the external interface that is returned to the user.
 			var instance = null;
@@ -366,7 +366,7 @@
 			 * @name getService
 			 * @param {String} name - Name of the service to find.
 			 */
-			function getService(name, local) {
+			function getService(name) {
 
 				var i = 0;
 				var len = includes.length;
@@ -386,13 +386,13 @@
 					}
 
 					// if we've already resolved this service a reference is in cache.
-					else if (serviceCache[name] && !local) {
+					else if (serviceCache[name]) {
 						return serviceCache[name];
 					}
 					
 					// if it's not local and not in the cache, we need to find it 
 					// in the includes.
-					else if (!local) {
+					else {
 
 						for (i=0;i<len;i++) {
 
@@ -419,24 +419,21 @@
 			 * @name resolve
 			 * @param {String|Object} serviceToResolve - This is either the string name of
 			 * a service to resolve or an actual Service instance.
-			 * @param {Boolean} [local] - Optional boolean flag determines if we only look
-			 * for a service in this module or all of the services included with included
-			 * modules.
 			 */
-			function resolve(serviceToResolve, local) {
+			function resolve(serviceToResolve) {
 
 				// this function can receive several types of arguments as the 
 				// serviceToResolve, we need to normalize this argument before moving on.
-				var service = getService(serviceToResolve, local);
+				var service = getService(serviceToResolve);
 
-				// if the service is a function, we're good to go, return it.
-				if (isFunction(service)) {
-					return service;
+				// if no service, get out.
+				if (!service) {
+					return null;
 				}
 
 				// if the service has been resolved already it will have an fn property.
 				// return the funtion contained there.
-				else if (service && service.fn) {
+				if (service.fn) {
 					return service.fn;
 				}
 
@@ -446,6 +443,11 @@
 				else if (service instanceof Service) {
 					service.fn = getDependencies(service);
 					return service.fn;
+				}
+
+				// otherwise returned whatever object has been defined as the service.
+				else {
+					return service;
 				}
 			}
 
@@ -515,7 +517,13 @@
 			 * @param {String} name - Name of the service to return.
 			 */
 			function get(name) {
-				return resolve(name, true);
+
+				// only get if the service is local.
+				if (services[name]) {
+					return resolve(name);
+				}
+
+				return null;
 			}
 
 			/**
@@ -569,7 +577,8 @@
 
 			// public interface exposed to users.
 			instance = {
-				name : name,
+				services : services,
+				name : moduleName,
 				define : define,
 				needs : needs,
 				get : get,
@@ -608,7 +617,7 @@
 		modules['global']
 
 		// collection of utilities. mostly for checking the type of a value.
-		.define('injekter.utils', function() {
+		.define('injekter.utils', [function() {
 
 			var utility = {};
 
@@ -626,17 +635,17 @@
 		    utility.forEach = forEach;
 
 			return utility;
-		})
+		}])
 
 		// expose the cross browser logger to all modules.
-		.define('logger', function() {
+		.define('logger', [function() {
 			return logger;
-		})
+		}])
 
 		// global config hash.
-		.define('config', function() {
+		.define('config', [function() {
 			return config;
-		});
+		}]);
 
 		/**
 		 * Gets the module with the given name. If the module doesn't exist, one
